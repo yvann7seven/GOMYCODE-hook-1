@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { ImagePlus, Plus, Save, X } from "lucide-react";
 
-const emptyMovie = { title: "", description: "", poster: "", rating: "3" };
+const emptyMovie = {
+  title: "",
+  description: "",
+  poster: "",
+  backdrop: "",
+  rating: "4",
+  year: "2026",
+  duration: "1h 45min",
+  genre: "Drame",
+  director: "",
+  trailer: "",
+};
 
 export default function MovieForm({ movie, onSave, onCancel }) {
   const [form, setForm] = useState(emptyMovie);
@@ -13,7 +24,13 @@ export default function MovieForm({ movie, onSave, onCancel }) {
             title: movie.title,
             description: movie.description,
             poster: movie.poster,
+        backdrop: movie.backdrop || movie.poster,
             rating: String(movie.rating),
+        year: String(movie.year || ""),
+        duration: movie.duration || "",
+        genre: movie.genre || "Drame",
+        director: movie.director || "",
+        trailer: movie.trailer || "",
           }
         : emptyMovie,
     );

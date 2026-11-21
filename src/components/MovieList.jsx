@@ -1,5 +1,5 @@
 import React from "react";
-import { Clapperboard } from "lucide-react";
+import { Clapperboard, Plus } from "lucide-react";
 import MovieCard from "./MovieCard.jsx";
 
 export default function MovieList({ movies, onEdit, onDelete }) {

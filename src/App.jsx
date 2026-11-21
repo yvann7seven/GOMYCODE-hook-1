@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Film, Plus, Sparkles } from "lucide-react";
+import { Film, Search, SlidersHorizontal, Sparkles, Star } from "lucide-react";
+import AppHeader from "./components/AppHeader.jsx";
 import MovieFilters from "./components/MovieFilters.jsx";
 import MovieForm from "./components/MovieForm.jsx";
 import MovieList from "./components/MovieList.jsx";
+import MovieDetail from "./components/MovieDetail.jsx";
 import { starterMovies } from "./data/movies.js";
 
 const STORAGE_KEY = "cineclub-movies";
@@ -26,6 +28,17 @@ export default function App() {
   const [filterRating, setFilterRating] = useState("0");
   const [editingMovie, setEditingMovie] = useState(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [detailId, setDetailId] = useState(null);
+
+  useEffect(() => {
+    function syncRoute() {
+      const match = window.location.hash.match(/^#\/movie\/(.+)$/);
+      setDetailId(match ? decodeURIComponent(match[1]) : null);
+    }
+    syncRoute();
+    window.addEventListener("hashchange", syncRoute);
+    return () => window.removeEventListener("hashchange", syncRoute);
+  }, []);
 
   useEffect(() => {
     setMovies(readMovies());
@@ -61,6 +74,10 @@ export default function App() {
     setIsFormOpen(true);
   }
 
+  function openMovie(movie) {
+    window.location.hash = `/movie/${encodeURIComponent(movie.id)}`;
+  }
+
   function closeForm() {
     setIsFormOpen(false);
     setEditingMovie(null);
@@ -70,11 +87,20 @@ export default function App() {
     if (editingMovie) {
       setMovies((current) =>
         current.map((movie) =>
-          movie.id === editingMovie.id ? { ...movie, ...values } : movie,
+          movie.id === editingMovie.id
+            ? { ...movie, ...values, rating: Number(values.rating), year: Number(values.year) || movie.year }
+            : movie,
         ),
       );
     } else {
-      setMovies((current) => [{ ...values, id: crypto.randomUUID() }, ...current]);
+      setMovies((current) => [{
+        ...values,
+        id: crypto.randomUUID(),
+        accent: "#d3ef75",
+        rating: Number(values.rating),
+        year: Number(values.year) || new Date().getFullYear(),
+        backdrop: values.backdrop || values.poster,
+      }, ...current]);
     }
     closeForm();
   }
@@ -83,74 +109,78 @@ export default function App() {
     setMovies((current) => current.filter((movie) => movie.id !== id));
   }
 
+  function handleMovieAction(movie, openDetail = false) {
+    if (openDetail) openMovie(movie);
+    else openEditForm(movie);
+  }
+
+  function goHome() {
+    window.location.hash = "/";
+  }
+
+  const activeMovie = detailId
+    ? movies.find((movie) => String(movie.id) === String(detailId))
+    : null;
+  const accent = activeMovie?.accent || "#d3ef75";
+
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <a className="brand" href="#" aria-label="Cinéclub, accueil">
-          <span className="brand__icon">
-            <Film size={19} aria-hidden="true" />
-          </span>
-          <span>cinéclub<span className="brand__dot">.</span></span>
-        </a>
-        <span className="topbar__tagline">VOTRE PETIT CINÉMA PERSONNEL</span>
-        <button className="button button--primary topbar__add" onClick={openAddForm}>
-          <Plus size={17} aria-hidden="true" />
-          <span>Ajouter un film</span>
-        </button>
-      </header>
+    <div className="app-shell" style={{ "--ambient-accent": accent }}>
+      <AppHeader detailView={Boolean(detailId)} accent={accent} onHome={goHome} onAdd={openAddForm} />
+      <main className="main">
+        {detailId ? (
+          <MovieDetail movie={activeMovie} onHome={goHome} />
+        ) : (
+          <>
+            <section className="hero">
+              <div className="hero__copy">
+                <span className="eyebrow"><Sparkles size={14} /> LA SÉANCE COMMENCE</span>
+                <h1>Les histoires<br />qu’on <em>garde.</em></h1>
+                <p>Une collection personnelle, des univers à explorer<br />et les plus belles bandes-annonces réunies ici.</p>
+                <button className="button button--primary hero__button" type="button" onClick={() => openMovie(movies[0])}>
+                  <Film size={16} /> Découvrir la sélection
+                </button>
+              </div>
+              <div className="hero__visual" aria-hidden="true">
+                <img src={movies[0]?.backdrop || movies[0]?.poster} alt="" />
+                <span className="hero__visual-glow" />
+                <span className="hero__visual-label">Séance du jour</span>
+              </div>
+            </section>
 
-      <main>
-        <section className="hero">
-          <div className="hero__copy">
-            <span className="eyebrow"><Sparkles size={14} /> LA SÉANCE COMMENCE</span>
-            <h1>Les histoires<br />qu'on <em>garde.</em></h1>
-            <p>Rassemblez vos films préférés au même endroit.<br />Une collection à votre image, pour les revoir encore.</p>
-          </div>
-          <div className="hero__art" aria-hidden="true">
-            <div className="hero__orb" />
-            <div className="hero__ticket"><Film size={38} /><span>BONNE<br />SÉANCE</span></div>
-            <span className="hero__spark hero__spark--one">✳</span>
-            <span className="hero__spark hero__spark--two">✦</span>
-          </div>
-        </section>
-
-        <section className="collection" aria-labelledby="collection-title">
-          <div className="collection__heading">
-            <div>
-              <span className="eyebrow">LE CATALOGUE</span>
-              <h2 id="collection-title">Ma collection <span>{movies.length}</span></h2>
-            </div>
-            <MovieFilters
-              title={searchTitle}
-              rating={filterRating}
-              onTitleChange={setSearchTitle}
-              onRatingChange={setFilterRating}
-            />
-          </div>
-
-          {isFormOpen && (
-            <div className="form-backdrop" onMouseDown={(event) => {
-              if (event.target === event.currentTarget) closeForm();
-            }}>
-              <MovieForm
-                movie={editingMovie}
-                onSave={saveMovie}
-                onCancel={closeForm}
+            <section className="collection" aria-labelledby="collection-title">
+              <div className="collection__heading">
+                <div>
+                  <span className="eyebrow">LE CATALOGUE</span>
+                  <h2 id="collection-title">Ma collection <span>{movies.length}</span></h2>
+                </div>
+                <MovieFilters
+                  title={searchTitle}
+                  rating={filterRating}
+                  onTitleChange={setSearchTitle}
+                  onRatingChange={setFilterRating}
+                />
+              </div>
+              <MovieList
+                movies={filteredMovies}
+                onEdit={handleMovieAction}
+                onDelete={deleteMovie}
               />
-            </div>
-          )}
-
-          <MovieList
-            movies={filteredMovies}
-            onEdit={openEditForm}
-            onDelete={deleteMovie}
-          />
-        </section>
+            </section>
+          </>
+        )}
       </main>
 
+      {isFormOpen && (
+        <div className="form-backdrop" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) closeForm();
+        }}>
+          <MovieForm movie={editingMovie} onSave={saveMovie} onCancel={closeForm} />
+        </div>
+      )}
+
       <footer className="footer">
-        <span>FAIT AVEC GOÛT, À REGARDER SANS MODÉRATION.</span>
-        <span>© CINÉCLUB</span>
+        <span><Film size={14} /> CINÉMA LUMINA · EXPÉRIENCE INTERACTIVE</span>
+        <span>{movies.length} œuvres disponibles</span>
       </footer>
     </div>
   );
